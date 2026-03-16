@@ -1,0 +1,16 @@
+Date,Type,Category,Account,Amount,Description
+2026-01-01,Income,Salary,Cash,3000,Monthly salary
+2026-01-02,Expense,Food,Cash,25,Lunch
+2026-01-03,Expense,Transport,Cash,10,Bus ticket
+2026-01-05,Expense,Bills,Cash,120,Electric bill
+2026-01-06,Expense,Entertainment,Cash,40,Movie
+2026-01-10,Income,Salary,Cash,3000,Monthly salary
+2026-01-11,Expense,Food,Cash,30,Groceries
+2026-01-12,Expense,Transport,Cash,15,Taxi
+2026-01-15,Expense,Other,Cash,50,Online purchase
+2026-02-01,Income,Salary,Cash,3000,Monthly salary
+2026-02-02,Expense,Food,Cash,20,Breakfast
+2026-02-05,Expense,Bills,Cash,100,Internet
+2026-02-07,Expense,Entertainment,Cash,60,Games
+2026-02-10,Expense,Transport,Cash,12,Train
+2026-02-15,Expense,Food,Cash,45,Restaurant

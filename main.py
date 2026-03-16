@@ -9,11 +9,13 @@ from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QFileDialog, QTextEdit, QMessageBox, QLabel, QFrame,
     QGridLayout, QTableWidget, QTableWidgetItem, QLineEdit,
-    QComboBox, QDateEdit, QProgressBar
+    QComboBox, QDateEdit, QProgressBar, QInputDialog
 )
 from PyQt6.QtCore import QDate, QTimer
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
+
+plt.style.use("dark_background")
 
 APP_VERSION = "1.0.0"
 UPDATE_URL = "https://github.com/XcharizardY/FinanceTracker/tree/main"
@@ -30,8 +32,13 @@ class FinanceApp(QWidget):
         self.resize(1200, 800)
 
         self.df = pd.DataFrame(columns=[
-            "Date", "Type", "Category", "Amount", "Description"
+            "Date", "Type", "Category", "Account", "Amount", "Description"
         ])
+
+        self.categories = [
+            "Salary", "Food", "Transport", "Entertainment", "Bills", "Other"
+        ]
+        self.accounts = ["Cash", "Bank", "Credit Card"]
 
         self.budgets = {
             "Food": 500,
@@ -66,9 +73,17 @@ class FinanceApp(QWidget):
         export_btn = QPushButton("Export Chart")
         export_btn.clicked.connect(self.export_chart)
 
+        manage_categories_btn = QPushButton("Manage Categories")
+        manage_categories_btn.clicked.connect(self.manage_categories)
+
+        manage_accounts_btn = QPushButton("Manage Accounts")
+        manage_accounts_btn.clicked.connect(self.manage_accounts)
+
         btn_layout.addWidget(load_btn)
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(export_btn)
+        btn_layout.addWidget(manage_categories_btn)
+        btn_layout.addWidget(manage_accounts_btn)
 
         main_layout.addLayout(btn_layout)
 
@@ -146,9 +161,10 @@ class FinanceApp(QWidget):
         self.type_input.addItems(["Income", "Expense"])
 
         self.category_input = QComboBox()
-        self.category_input.addItems(
-            ["Salary", "Food", "Transport", "Entertainment", "Bills", "Other"]
-        )
+        self.category_input.addItems(self.categories)
+
+        self.account_input = QComboBox()
+        self.account_input.addItems(self.accounts)
 
         self.amount_input = QLineEdit()
         self.amount_input.setPlaceholderText("Amount")
@@ -162,6 +178,7 @@ class FinanceApp(QWidget):
         layout.addWidget(self.date_input)
         layout.addWidget(self.type_input)
         layout.addWidget(self.category_input)
+        layout.addWidget(self.account_input)
         layout.addWidget(self.amount_input)
         layout.addWidget(self.desc_input)
         layout.addWidget(add_btn)
@@ -185,6 +202,13 @@ class FinanceApp(QWidget):
                 df = pd.read_csv(file_path)
                 df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce")
                 df["Date"] = pd.to_datetime(df["Date"])
+                if "Category" not in df.columns:
+                    df["Category"] = "Other"
+                if "Account" not in df.columns:
+                    df["Account"] = self.accounts[0]
+                df = df[[
+                    "Date", "Type", "Category", "Account", "Amount", "Description"
+                ]]
                 dataframes.append(df)
 
             merged = pd.concat(dataframes, ignore_index=True)
@@ -194,6 +218,7 @@ class FinanceApp(QWidget):
             else:
                 self.df = pd.concat([self.df, merged], ignore_index=True)
 
+            self.sync_categories_accounts_from_data()
             self.refresh_all()
 
         except Exception as e:
@@ -232,6 +257,7 @@ class FinanceApp(QWidget):
             date = self.date_input.date().toString("yyyy-MM-dd")
             ttype = self.type_input.currentText()
             category = self.category_input.currentText()
+            account = self.account_input.currentText()
             amount = float(self.amount_input.text())
             desc = self.desc_input.text()
 
@@ -239,6 +265,7 @@ class FinanceApp(QWidget):
                 "Date": date,
                 "Type": ttype,
                 "Category": category,
+                "Account": account,
                 "Amount": amount,
                 "Description": desc
             }
@@ -252,6 +279,8 @@ class FinanceApp(QWidget):
 
         except:
             QMessageBox.warning(self, "Error", "Invalid input")
+        finally:
+            self.sync_categories_accounts_from_data()
 
     # ---------------- Refresh ----------------
 
@@ -322,6 +351,9 @@ class FinanceApp(QWidget):
         plt.close("all")
 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+        fig.patch.set_facecolor("#121212")
+        ax1.set_facecolor("#1e1e1e")
+        ax2.set_facecolor("#1e1e1e")
 
         df = self.df.copy()
         df["Month"] = df["Date"].dt.to_period("M")
@@ -331,16 +363,43 @@ class FinanceApp(QWidget):
         monthly["Savings"] = monthly.get(
             "Income", 0) - monthly.get("Expense", 0)
 
-        monthly.plot(ax=ax1)
+        monthly.plot(
+            ax=ax1,
+            color=["#00c8ff", "#ff4d6d", "#7cff6b"],
+            linewidth=3.0,
+            marker="o",
+            markersize=5,
+            label=["Income", "Expense", "Savings"]
+        )
         ax1.set_title("Income vs Expenses")
+        ax1.tick_params(colors="white")
+        ax1.xaxis.label.set_color("white")
+        ax1.yaxis.label.set_color("white")
+        ax1.title.set_color("white")
+        ax1.grid(color="#888888", alpha=0.6)
+
+        legend = ax1.legend()
+        if legend:
+            legend.get_frame().set_facecolor("#1e1e1e")
+            legend.get_frame().set_edgecolor("#444")
+            for text in legend.get_texts():
+                text.set_color("white")
 
         category = df[df["Type"] == "Expense"].groupby("Category")[
             "Amount"].sum()
 
         if not category.empty:
-            category.plot(kind="pie", ax=ax2, autopct="%1.0f%%")
+            ax2.pie(
+                category.values,
+                labels=category.index,
+                autopct="%1.0f%%",
+                textprops={"color": "white"},
+                colors=["#00c8ff", "#ff4d6d", "#ffd166", "#7cff6b", "#b388ff", "#ff8fab"],
+                wedgeprops={"edgecolor": "#1e1e1e", "linewidth": 1.0}
+            )
 
         ax2.set_title("Expense Distribution")
+        ax2.title.set_color("white")
 
         fig.tight_layout()
 
@@ -388,6 +447,111 @@ class FinanceApp(QWidget):
             background:#1e1e1e;
         }
         """)
+
+    # ---------------- Category & Account Management ----------------
+
+    def manage_categories(self):
+
+        action, ok = QInputDialog.getItem(
+            self,
+            "Manage Categories",
+            "Choose action:",
+            ["Add Category", "Remove Category"],
+            0,
+            False
+        )
+        if not ok:
+            return
+
+        if action == "Add Category":
+            name, ok = QInputDialog.getText(
+                self, "Add Category", "Category name:"
+            )
+            if ok and name.strip():
+                name = name.strip()
+                if name not in self.categories:
+                    self.categories.append(name)
+                    self.category_input.addItem(name)
+        else:
+            if not self.categories:
+                QMessageBox.information(
+                    self, "No Categories", "There are no categories to remove."
+                )
+                return
+            name, ok = QInputDialog.getItem(
+                self,
+                "Remove Category",
+                "Select category:",
+                self.categories,
+                0,
+                False
+            )
+            if ok and name in self.categories:
+                self.categories.remove(name)
+                index = self.category_input.findText(name)
+                if index >= 0:
+                    self.category_input.removeItem(index)
+
+    def manage_accounts(self):
+
+        action, ok = QInputDialog.getItem(
+            self,
+            "Manage Accounts",
+            "Choose action:",
+            ["Add Account", "Remove Account"],
+            0,
+            False
+        )
+        if not ok:
+            return
+
+        if action == "Add Account":
+            name, ok = QInputDialog.getText(
+                self, "Add Account", "Account name:"
+            )
+            if ok and name.strip():
+                name = name.strip()
+                if name not in self.accounts:
+                    self.accounts.append(name)
+                    self.account_input.addItem(name)
+        else:
+            if len(self.accounts) <= 1:
+                QMessageBox.information(
+                    self,
+                    "Cannot Remove",
+                    "At least one account is required."
+                )
+                return
+            name, ok = QInputDialog.getItem(
+                self,
+                "Remove Account",
+                "Select account:",
+                self.accounts,
+                0,
+                False
+            )
+            if ok and name in self.accounts:
+                self.accounts.remove(name)
+                index = self.account_input.findText(name)
+                if index >= 0:
+                    self.account_input.removeItem(index)
+
+    def sync_categories_accounts_from_data(self):
+
+        if self.df.empty:
+            return
+
+        if "Category" in self.df.columns:
+            for name in sorted(set(self.df["Category"].dropna().astype(str))):
+                if name and name not in self.categories:
+                    self.categories.append(name)
+                    self.category_input.addItem(name)
+
+        if "Account" in self.df.columns:
+            for name in sorted(set(self.df["Account"].dropna().astype(str))):
+                if name and name not in self.accounts:
+                    self.accounts.append(name)
+                    self.account_input.addItem(name)
 
     # ---------------- Autosave ----------------
 
