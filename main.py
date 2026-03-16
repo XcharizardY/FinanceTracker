@@ -17,6 +17,13 @@ import matplotlib.pyplot as plt
 
 plt.style.use("dark_background")
 
+try:
+    import ai_features
+    AI_IMPORT_ERROR = None
+except Exception as e:
+    ai_features = None
+    AI_IMPORT_ERROR = str(e)
+
 APP_VERSION = "1.0.0"
 UPDATE_URL = "https://github.com/XcharizardY/FinanceTracker/tree/main"
 UPDATE_TIMEOUT_SEC = 5
@@ -73,6 +80,9 @@ class FinanceApp(QWidget):
         export_btn = QPushButton("Export Chart")
         export_btn.clicked.connect(self.export_chart)
 
+        self.ai_insights_btn = QPushButton("AI Insights")
+        self.ai_insights_btn.clicked.connect(self.run_ai_insights)
+
         manage_categories_btn = QPushButton("Manage Categories")
         manage_categories_btn.clicked.connect(self.manage_categories)
 
@@ -82,6 +92,7 @@ class FinanceApp(QWidget):
         btn_layout.addWidget(load_btn)
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(export_btn)
+        btn_layout.addWidget(self.ai_insights_btn)
         btn_layout.addWidget(manage_categories_btn)
         btn_layout.addWidget(manage_accounts_btn)
 
@@ -172,6 +183,9 @@ class FinanceApp(QWidget):
         self.desc_input = QLineEdit()
         self.desc_input.setPlaceholderText("Description")
 
+        self.ai_category_btn = QPushButton("AI Category")
+        self.ai_category_btn.clicked.connect(self.run_ai_category)
+
         add_btn = QPushButton("Add")
         add_btn.clicked.connect(self.add_transaction)
 
@@ -181,6 +195,7 @@ class FinanceApp(QWidget):
         layout.addWidget(self.account_input)
         layout.addWidget(self.amount_input)
         layout.addWidget(self.desc_input)
+        layout.addWidget(self.ai_category_btn)
         layout.addWidget(add_btn)
 
         return layout
@@ -447,6 +462,141 @@ class FinanceApp(QWidget):
             background:#1e1e1e;
         }
         """)
+
+    # ---------------- AI Features ----------------
+
+    def _check_ai_ready(self):
+
+        if ai_features is None:
+            QMessageBox.warning(
+                self,
+                "AI Unavailable",
+                "AI features are unavailable. Please install the OpenAI "
+                "Python SDK and set OPENAI_API_KEY."
+            )
+            return False
+
+        if AI_IMPORT_ERROR:
+            QMessageBox.warning(
+                self,
+                "AI Unavailable",
+                f"AI features failed to load: {AI_IMPORT_ERROR}"
+            )
+            return False
+
+        return True
+
+    def run_ai_insights(self):
+
+        if not self._check_ai_ready():
+            return
+
+        if self.df.empty:
+            QMessageBox.information(
+                self,
+                "No Data",
+                "Add or import transactions before requesting insights."
+            )
+            return
+
+        self.ai_insights_btn.setEnabled(False)
+        thread = threading.Thread(
+            target=self._ai_insights_worker,
+            daemon=True
+        )
+        thread.start()
+
+    def _ai_insights_worker(self):
+
+        try:
+            result = ai_features.analyze_spending(self.df)
+            QTimer.singleShot(
+                0,
+                lambda: self._show_ai_insights(result)
+            )
+        except Exception as e:
+            QTimer.singleShot(
+                0,
+                lambda: self._show_ai_error(str(e))
+            )
+
+    def _show_ai_insights(self, result):
+
+        self.ai_insights_btn.setEnabled(True)
+
+        if not result:
+            QMessageBox.information(
+                self,
+                "AI Insights",
+                "No insights returned."
+            )
+            return
+
+        QMessageBox.information(self, "AI Insights", result)
+
+    def run_ai_category(self):
+
+        if not self._check_ai_ready():
+            return
+
+        description = self.desc_input.text().strip()
+        if not description:
+            QMessageBox.information(
+                self,
+                "Missing Description",
+                "Enter a description to get an AI category suggestion."
+            )
+            return
+
+        self.ai_category_btn.setEnabled(False)
+        thread = threading.Thread(
+            target=self._ai_category_worker,
+            args=(description, list(self.categories)),
+            daemon=True
+        )
+        thread.start()
+
+    def _ai_category_worker(self, description, categories):
+
+        try:
+            category = ai_features.suggest_category(description, categories)
+            QTimer.singleShot(
+                0,
+                lambda: self._apply_ai_category(category)
+            )
+        except Exception as e:
+            QTimer.singleShot(
+                0,
+                lambda: self._show_ai_error(str(e))
+            )
+
+    def _apply_ai_category(self, category):
+
+        self.ai_category_btn.setEnabled(True)
+
+        if not category:
+            QMessageBox.information(
+                self,
+                "AI Category",
+                "No category suggestion returned."
+            )
+            return
+
+        index = self.category_input.findText(category)
+        if index >= 0:
+            self.category_input.setCurrentIndex(index)
+        else:
+            QMessageBox.information(
+                self,
+                "AI Category",
+                f"Suggested category not in list: {category}"
+            )
+
+    def _show_ai_error(self, message):
+
+        self.ai_insights_btn.setEnabled(True)
+        self.ai_category_btn.setEnabled(True)
+        QMessageBox.warning(self, "AI Error", message)
 
     # ---------------- Category & Account Management ----------------
 
