@@ -28,6 +28,8 @@ APP_VERSION = "1.0.0"
 UPDATE_URL = "https://github.com/XcharizardY/FinanceTracker/tree/main"
 UPDATE_TIMEOUT_SEC = 5
 AUTOSAVE_FILENAME = "autosave.csv"
+COLUMNS = ["Date", "Type", "Category", "Account", "Amount", "Description"]
+DEFAULT_CATEGORY = "Other"
 
 
 class FinanceApp(QWidget):
@@ -38,9 +40,7 @@ class FinanceApp(QWidget):
         self.setWindowTitle("Finance Tracker Pro")
         self.resize(1200, 800)
 
-        self.df = pd.DataFrame(columns=[
-            "Date", "Type", "Category", "Account", "Amount", "Description"
-        ])
+        self.df = pd.DataFrame(columns=COLUMNS)
 
         self.categories = [
             "Salary", "Food", "Transport", "Entertainment", "Bills", "Other"
@@ -200,6 +200,48 @@ class FinanceApp(QWidget):
 
         return layout
 
+    # ---------------- Data Normalization ----------------
+
+    def _normalize_dataframe(self, df):
+
+        if (
+            "Type" not in df.columns
+            or "Date" not in df.columns
+            or "Amount" not in df.columns
+        ):
+            raise ValueError(
+                "CSV must include Date, Type, and Amount columns."
+            )
+
+        data = df.copy()
+        data["Amount"] = pd.to_numeric(data["Amount"], errors="coerce")
+        data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
+
+        if "Category" not in data.columns:
+            data["Category"] = DEFAULT_CATEGORY
+        if "Account" not in data.columns:
+            data["Account"] = self.accounts[0] if self.accounts else "Default"
+        if "Description" not in data.columns:
+            data["Description"] = ""
+
+        return data[COLUMNS]
+
+    def _ensure_datetime(self):
+
+        if not self.df.empty and "Date" in self.df.columns:
+            if not pd.api.types.is_datetime64_any_dtype(self.df["Date"]):
+                self.df["Date"] = pd.to_datetime(
+                    self.df["Date"], errors="coerce"
+                )
+
+    def _compute_totals(self):
+
+        income = self.df[self.df["Type"] == "Income"]["Amount"].sum()
+        expense = self.df[self.df["Type"] == "Expense"]["Amount"].sum()
+        savings = income - expense
+        rate = (savings / income * 100) if income else 0
+        return income, expense, savings, rate
+
     # ---------------- Load CSV ----------------
 
     def load_csv(self):
@@ -215,16 +257,7 @@ class FinanceApp(QWidget):
             dataframes = []
             for file_path in file_paths:
                 df = pd.read_csv(file_path)
-                df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce")
-                df["Date"] = pd.to_datetime(df["Date"])
-                if "Category" not in df.columns:
-                    df["Category"] = "Other"
-                if "Account" not in df.columns:
-                    df["Account"] = self.accounts[0]
-                df = df[[
-                    "Date", "Type", "Category", "Account", "Amount", "Description"
-                ]]
-                dataframes.append(df)
+                dataframes.append(self._normalize_dataframe(df))
 
             merged = pd.concat(dataframes, ignore_index=True)
 
@@ -269,7 +302,7 @@ class FinanceApp(QWidget):
 
         try:
 
-            date = self.date_input.date().toString("yyyy-MM-dd")
+            date = pd.Timestamp(self.date_input.date().toPyDate())
             ttype = self.type_input.currentText()
             category = self.category_input.currentText()
             account = self.account_input.currentText()
@@ -304,23 +337,18 @@ class FinanceApp(QWidget):
         if self.df.empty:
             return
 
-        self.df["Date"] = pd.to_datetime(self.df["Date"])
+        self._ensure_datetime()
+        income, expense, savings, rate = self._compute_totals()
 
-        self.update_dashboard()
+        self.update_dashboard(income, expense, savings, rate)
         self.update_table()
         self.update_chart()
-        self.update_goal()
+        self.update_goal(savings)
         self.autosave()
 
     # ---------------- Dashboard Update ----------------
 
-    def update_dashboard(self):
-
-        income = self.df[self.df["Type"] == "Income"]["Amount"].sum()
-        expense = self.df[self.df["Type"] == "Expense"]["Amount"].sum()
-        savings = income - expense
-
-        rate = (savings / income * 100) if income else 0
+    def update_dashboard(self, income, expense, savings, rate):
 
         self.income_card.value.setText(f"${income:,.2f}")    # type: ignore
         self.expense_card.value.setText(f"${expense:,.2f}")  # type: ignore
@@ -329,12 +357,7 @@ class FinanceApp(QWidget):
 
     # ---------------- Goal Progress ----------------
 
-    def update_goal(self):
-
-        income = self.df[self.df["Type"] == "Income"]["Amount"].sum()
-        expense = self.df[self.df["Type"] == "Expense"]["Amount"].sum()
-
-        savings = income - expense
+    def update_goal(self, savings):
 
         percent = int((savings / self.savings_goal) * 100)
         percent = max(0, min(percent, 100))
@@ -345,19 +368,20 @@ class FinanceApp(QWidget):
 
     def update_table(self):
 
-        df = self.df.copy()
+        df = self.df
 
+        self.table.setUpdatesEnabled(False)
         self.table.setRowCount(len(df))
         self.table.setColumnCount(len(df.columns))
 
         self.table.setHorizontalHeaderLabels(df.columns)
 
-        for i in range(len(df)):
-            for j in range(len(df.columns)):
-                self.table.setItem(
-                    i, j,
-                    QTableWidgetItem(str(df.iloc[i, j]))
-                )
+        data = df.to_numpy()
+        for i, row in enumerate(data):
+            for j, value in enumerate(row):
+                self.table.setItem(i, j, QTableWidgetItem(str(value)))
+
+        self.table.setUpdatesEnabled(True)
 
     # ---------------- Charts ----------------
 
@@ -370,13 +394,17 @@ class FinanceApp(QWidget):
         ax1.set_facecolor("#1e1e1e")
         ax2.set_facecolor("#1e1e1e")
 
-        df = self.df.copy()
-        df["Month"] = df["Date"].dt.to_period("M")
+        df = self.df
+        month_index = df["Date"].dt.to_period("M")
 
-        monthly = df.groupby(["Month", "Type"])[
+        monthly = df.groupby([month_index, "Type"])[
             "Amount"].sum().unstack(fill_value=0)
         monthly["Savings"] = monthly.get(
             "Income", 0) - monthly.get("Expense", 0)
+        monthly = monthly.reindex(
+            columns=["Income", "Expense", "Savings"],
+            fill_value=0
+        )
 
         monthly.plot(
             ax=ax1,
@@ -409,7 +437,8 @@ class FinanceApp(QWidget):
                 labels=category.index,
                 autopct="%1.0f%%",
                 textprops={"color": "white"},
-                colors=["#00c8ff", "#ff4d6d", "#ffd166", "#7cff6b", "#b388ff", "#ff8fab"],
+                colors=["#00c8ff", "#ff4d6d", "#ffd166",
+                        "#7cff6b", "#b388ff", "#ff8fab"],
                 wedgeprops={"edgecolor": "#1e1e1e", "linewidth": 1.0}
             )
 

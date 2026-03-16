@@ -1,16 +1,81 @@
 Date,Type,Category,Account,Amount,Description
-2026-01-01,Income,Salary,Cash,3000,Monthly salary
-2026-01-02,Expense,Food,Cash,25,Lunch
-2026-01-03,Expense,Transport,Cash,10,Bus ticket
-2026-01-05,Expense,Bills,Cash,120,Electric bill
-2026-01-06,Expense,Entertainment,Cash,40,Movie
-2026-01-10,Income,Salary,Cash,3000,Monthly salary
-2026-01-11,Expense,Food,Cash,30,Groceries
-2026-01-12,Expense,Transport,Cash,15,Taxi
-2026-01-15,Expense,Other,Cash,50,Online purchase
-2026-02-01,Income,Salary,Cash,3000,Monthly salary
-2026-02-02,Expense,Food,Cash,20,Breakfast
-2026-02-05,Expense,Bills,Cash,100,Internet
-2026-02-07,Expense,Entertainment,Cash,60,Games
-2026-02-10,Expense,Transport,Cash,12,Train
-2026-02-15,Expense,Food,Cash,45,Restaurant
+2026-01-01,Income,Salary,Bank,3000,Monthly salary
+2026-01-02,Expense,Food,Cash,12,Breakfast sandwich
+2026-01-02,Expense,Transport,Card,3,Bus fare
+2026-01-03,Expense,Food,Card,25,Restaurant lunch
+2026-01-03,Expense,Entertainment,Card,15,Movie ticket
+2026-01-04,Expense,Bills,Bank,120,Electricity bill
+2026-01-04,Expense,Food,Cash,9,Coffee and snack
+2026-01-05,Expense,Transport,Card,20,Gas refill
+2026-01-05,Expense,Food,Card,18,Dinner
+2026-01-06,Expense,Entertainment,Card,30,Video game purchase
+2026-01-06,Expense,Food,Cash,10,Street food
+2026-01-07,Expense,Other,Bank,50,Online subscription bundle
+2026-01-07,Expense,Transport,Card,4,Metro ticket
+2026-01-08,Expense,Food,Card,22,Restaurant dinner
+2026-01-08,Expense,Food,Cash,6,Ice cream
+2026-01-09,Expense,Bills,Bank,60,Internet bill
+2026-01-09,Expense,Entertainment,Card,12,Streaming movie rental
+2026-01-10,Expense,Food,Card,16,Lunch
+2026-01-10,Expense,Transport,Card,5,Taxi
+2026-01-11,Expense,Food,Cash,8,Bakery items
+2026-01-11,Expense,Other,Card,40,Clothes
+2026-01-12,Expense,Food,Card,20,Groceries
+2026-01-12,Expense,Transport,Card,3,Bus
+2026-01-13,Expense,Entertainment,Card,25,Bowling
+2026-01-13,Expense,Food,Cash,11,Lunch
+2026-01-14,Expense,Bills,Bank,90,Water bill
+2026-01-14,Expense,Food,Card,24,Restaurant
+2026-01-15,Income,Freelance,Bank,500,Website design payment
+2026-01-15,Expense,Food,Cash,7,Snack
+2026-01-16,Expense,Transport,Card,20,Gas refill
+2026-01-16,Expense,Entertainment,Card,14,Arcade games
+2026-01-17,Expense,Food,Card,19,Lunch
+2026-01-17,Expense,Other,Card,65,Electronics accessory
+2026-01-18,Expense,Food,Cash,10,Fast food
+2026-01-18,Expense,Transport,Card,4,Metro
+2026-01-19,Expense,Food,Card,23,Dinner
+2026-01-19,Expense,Entertainment,Card,11,Music subscription
+2026-01-20,Expense,Bills,Bank,45,Phone bill
+2026-01-20,Expense,Food,Cash,9,Coffee
+2026-01-21,Expense,Food,Card,28,Groceries
+2026-01-21,Expense,Transport,Card,3,Bus
+2026-01-22,Expense,Entertainment,Card,20,Cinema
+2026-01-22,Expense,Food,Cash,6,Snack
+2026-01-23,Expense,Other,Card,70,Shoes
+2026-01-23,Expense,Food,Card,18,Lunch
+2026-01-24,Expense,Transport,Card,22,Gas refill
+2026-01-24,Expense,Food,Cash,7,Street food
+2026-01-25,Expense,Entertainment,Card,15,Game DLC
+2026-01-25,Expense,Food,Card,26,Dinner
+2026-01-26,Expense,Bills,Bank,130,Electricity bill
+2026-01-26,Expense,Food,Cash,10,Coffee
+2026-01-27,Expense,Transport,Card,3,Bus
+2026-01-27,Expense,Food,Card,21,Restaurant
+2026-01-28,Expense,Other,Card,50,Gym membership
+2026-01-28,Expense,Food,Cash,8,Bakery
+2026-01-29,Expense,Entertainment,Card,18,Concert ticket
+2026-01-29,Expense,Food,Card,24,Dinner
+2026-01-30,Expense,Transport,Card,5,Taxi
+2026-01-30,Expense,Food,Cash,6,Snack
+2026-01-31,Income,Investment,Bank,200,Stock dividend
+2026-01-31,Expense,Other,Card,35,Household items
+2026-02-01,Income,Salary,Bank,3000,Monthly salary
+2026-02-02,Expense,Food,Card,17,Lunch
+2026-02-02,Expense,Transport,Card,3,Bus
+2026-02-03,Expense,Food,Cash,12,Fast food
+2026-02-03,Expense,Entertainment,Card,20,Movie ticket
+2026-02-04,Expense,Bills,Bank,125,Electricity bill
+2026-02-04,Expense,Food,Card,22,Dinner
+2026-02-05,Expense,Transport,Card,21,Gas refill
+2026-02-05,Expense,Food,Cash,9,Coffee
+2026-02-06,Expense,Entertainment,Card,30,Video game
+2026-02-06,Expense,Food,Card,18,Lunch
+2026-02-07,Expense,Other,Card,45,Online shopping
+2026-02-07,Expense,Transport,Card,4,Metro
+2026-02-08,Expense,Food,Cash,11,Snack
+2026-02-08,Expense,Food,Card,27,Restaurant dinner
+2026-02-09,Expense,Bills,Bank,60,Internet bill
+2026-02-09,Expense,Entertainment,Card,12,Streaming rental
+2026-02-10,Expense,Food,Card,19,Lunch
+2026-02-10,Expense,Transport,Card,6,Taxi
