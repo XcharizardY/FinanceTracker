@@ -4,10 +4,12 @@ import threading
 import urllib.error
 import urllib.request
 import os
+from typing import Protocol
+
 import pandas as pd
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QFileDialog, QTextEdit, QMessageBox, QLabel, QFrame,
+    QFileDialog, QMessageBox, QLabel, QFrame,
     QGridLayout, QTableWidget, QTableWidgetItem, QLineEdit,
     QComboBox, QDateEdit, QProgressBar, QInputDialog
 )
@@ -18,18 +20,77 @@ import matplotlib.pyplot as plt
 plt.style.use("dark_background")
 
 try:
-    import ai_features
+    import ai_features as _ai_features
     AI_IMPORT_ERROR = None
 except Exception as e:
-    ai_features = None
+    _ai_features = None
     AI_IMPORT_ERROR = str(e)
 
+if _ai_features is None and AI_IMPORT_ERROR:
+    print("AI module failed to load:", AI_IMPORT_ERROR)
+
+
+class AiFeatures(Protocol):
+    def analyze_spending(self, df: pd.DataFrame) -> str | None: ...
+
+    def suggest_category(
+        self, description: str, categories: list[str]
+    ) -> str | None: ...
+
+    def budget_advice(
+        self, df: pd.DataFrame, budgets: dict
+    ) -> str | None: ...
+
+    def chat_assistant(
+        self, df: pd.DataFrame, question: str
+    ) -> str | None: ...
+    def detect_unusual_spending(self, df: pd.DataFrame) -> str | None: ...
+
+
+ai_features: AiFeatures | None = _ai_features
+
 APP_VERSION = "1.0.0"
-UPDATE_URL = "https://github.com/XcharizardY/FinanceTracker/tree/main"
+UPDATE_URL = (
+    "https://raw.githubusercontent.com/XcharizardY/FinanceTracker/main/"
+    "version.json"
+)
 UPDATE_TIMEOUT_SEC = 5
 AUTOSAVE_FILENAME = "autosave.csv"
+AI_UI_TIMEOUT_MS = 25000
+
 COLUMNS = ["Date", "Type", "Category", "Account", "Amount", "Description"]
 DEFAULT_CATEGORY = "Other"
+
+LINE_COLORS = ["#00c8ff", "#ff4d6d", "#7cff6b"]
+PIE_COLORS = ["#00c8ff", "#ff4d6d", "#ffd166",
+              "#7cff6b", "#b388ff", "#ff8fab"]
+
+UI_STYLE = """
+QWidget {
+    background:#121212;
+    color:white;
+    font-family:Segoe UI;
+}
+
+QPushButton {
+    background:#2ecc71;
+    padding:8px;
+    border-radius:6px;
+}
+
+QPushButton:hover {
+    background:#27ae60;
+}
+
+QLineEdit, QComboBox, QDateEdit {
+    background:#1e1e1e;
+    padding:6px;
+}
+
+QTableWidget {
+    background:#1e1e1e;
+}
+"""
 
 
 class FinanceApp(QWidget):
@@ -41,6 +102,7 @@ class FinanceApp(QWidget):
         self.resize(1200, 800)
 
         self.df = pd.DataFrame(columns=COLUMNS)
+        self._dirty = False
 
         self.categories = [
             "Salary", "Food", "Transport", "Entertainment", "Bills", "Other"
@@ -83,6 +145,15 @@ class FinanceApp(QWidget):
         self.ai_insights_btn = QPushButton("AI Insights")
         self.ai_insights_btn.clicked.connect(self.run_ai_insights)
 
+        self.ai_budget_btn = QPushButton("AI Budget Advisor")
+        self.ai_budget_btn.clicked.connect(self.run_ai_budget_advisor)
+
+        self.ai_fraud_btn = QPushButton("AI Fraud Check")
+        self.ai_fraud_btn.clicked.connect(self.run_ai_fraud_check)
+
+        self.ai_chat_btn = QPushButton("AI Chat")
+        self.ai_chat_btn.clicked.connect(self.run_ai_chat)
+
         manage_categories_btn = QPushButton("Manage Categories")
         manage_categories_btn.clicked.connect(self.manage_categories)
 
@@ -93,6 +164,9 @@ class FinanceApp(QWidget):
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(export_btn)
         btn_layout.addWidget(self.ai_insights_btn)
+        btn_layout.addWidget(self.ai_budget_btn)
+        btn_layout.addWidget(self.ai_fraud_btn)
+        btn_layout.addWidget(self.ai_chat_btn)
         btn_layout.addWidget(manage_categories_btn)
         btn_layout.addWidget(manage_accounts_btn)
 
@@ -141,7 +215,8 @@ class FinanceApp(QWidget):
 
         frame = QFrame()
         frame.setStyleSheet(
-            "background:#1e1e1e; padding:15px; border-radius:10px;")
+            "background:#1e1e1e; padding:15px; border-radius:10px;"
+        )
 
         layout = QVBoxLayout()
 
@@ -242,6 +317,9 @@ class FinanceApp(QWidget):
         rate = (savings / income * 100) if income else 0
         return income, expense, savings, rate
 
+    def _mark_dirty(self):
+        self._dirty = True
+
     # ---------------- Load CSV ----------------
 
     def load_csv(self):
@@ -266,6 +344,7 @@ class FinanceApp(QWidget):
             else:
                 self.df = pd.concat([self.df, merged], ignore_index=True)
 
+            self._mark_dirty()
             self.sync_categories_accounts_from_data()
             self.refresh_all()
 
@@ -301,7 +380,6 @@ class FinanceApp(QWidget):
     def add_transaction(self):
 
         try:
-
             date = pd.Timestamp(self.date_input.date().toPyDate())
             ttype = self.type_input.currentText()
             category = self.category_input.currentText()
@@ -323,12 +401,12 @@ class FinanceApp(QWidget):
                 ignore_index=True
             )
 
+            self._mark_dirty()
+            self.sync_categories_accounts_from_data()
             self.refresh_all()
 
-        except:
+        except Exception:
             QMessageBox.warning(self, "Error", "Invalid input")
-        finally:
-            self.sync_categories_accounts_from_data()
 
     # ---------------- Refresh ----------------
 
@@ -395,25 +473,32 @@ class FinanceApp(QWidget):
         ax2.set_facecolor("#1e1e1e")
 
         df = self.df
-        month_index = df["Date"].dt.to_period("M")
+        if df.empty or "Date" not in df.columns:
+            self.canvas.figure = fig
+            self.canvas.draw()
+            return
 
+        month_index = df["Date"].dt.to_period("M")
         monthly = df.groupby([month_index, "Type"])[
-            "Amount"].sum().unstack(fill_value=0)
+            "Amount"
+        ].sum().unstack(fill_value=0)
         monthly["Savings"] = monthly.get(
-            "Income", 0) - monthly.get("Expense", 0)
+            "Income", 0
+        ) - monthly.get("Expense", 0)
         monthly = monthly.reindex(
             columns=["Income", "Expense", "Savings"],
             fill_value=0
         )
 
-        monthly.plot(
-            ax=ax1,
-            color=["#00c8ff", "#ff4d6d", "#7cff6b"],
-            linewidth=3.0,
-            marker="o",
-            markersize=5,
-            label=["Income", "Expense", "Savings"]
-        )
+        if not monthly.empty:
+            monthly.plot(
+                ax=ax1,
+                color=LINE_COLORS,
+                linewidth=3.0,
+                marker="o",
+                markersize=5
+            )
+
         ax1.set_title("Income vs Expenses")
         ax1.tick_params(colors="white")
         ax1.xaxis.label.set_color("white")
@@ -429,7 +514,8 @@ class FinanceApp(QWidget):
                 text.set_color("white")
 
         category = df[df["Type"] == "Expense"].groupby("Category")[
-            "Amount"].sum()
+            "Amount"
+        ].sum()
 
         if not category.empty:
             ax2.pie(
@@ -437,8 +523,7 @@ class FinanceApp(QWidget):
                 labels=category.index,
                 autopct="%1.0f%%",
                 textprops={"color": "white"},
-                colors=["#00c8ff", "#ff4d6d", "#ffd166",
-                        "#7cff6b", "#b388ff", "#ff8fab"],
+                colors=PIE_COLORS,
                 wedgeprops={"edgecolor": "#1e1e1e", "linewidth": 1.0}
             )
 
@@ -465,32 +550,7 @@ class FinanceApp(QWidget):
 
     def apply_style(self):
 
-        self.setStyleSheet("""
-        QWidget {
-            background:#121212;
-            color:white;
-            font-family:Segoe UI;
-        }
-
-        QPushButton {
-            background:#2ecc71;
-            padding:8px;
-            border-radius:6px;
-        }
-
-        QPushButton:hover {
-            background:#27ae60;
-        }
-
-        QLineEdit, QComboBox, QDateEdit {
-            background:#1e1e1e;
-            padding:6px;
-        }
-
-        QTableWidget {
-            background:#1e1e1e;
-        }
-        """)
+        self.setStyleSheet(UI_STYLE)
 
     # ---------------- AI Features ----------------
 
@@ -500,20 +560,55 @@ class FinanceApp(QWidget):
             QMessageBox.warning(
                 self,
                 "AI Unavailable",
-                "AI features are unavailable. Please install the OpenAI "
-                "Python SDK and set OPENAI_API_KEY."
+                "ai_features.py could not be imported."
             )
             return False
 
         if AI_IMPORT_ERROR:
             QMessageBox.warning(
                 self,
-                "AI Unavailable",
-                f"AI features failed to load: {AI_IMPORT_ERROR}"
+                "AI Import Error",
+                AI_IMPORT_ERROR
             )
             return False
 
         return True
+
+    def _run_ai_task(self, button, worker, on_success):
+
+        button.setEnabled(False)
+        done = threading.Event()
+
+        def _finish_success(result):
+            if done.is_set():
+                return
+            done.set()
+            on_success(result)
+
+        def _finish_error(message):
+            if done.is_set():
+                return
+            done.set()
+            self._show_ai_error(message)
+
+        def _wrapped():
+            try:
+                result = worker()
+                QTimer.singleShot(0, lambda: _finish_success(result))
+            except Exception as e:
+                QTimer.singleShot(0, lambda: _finish_error(str(e)))
+
+        def _timeout():
+            if done.is_set():
+                return
+            done.set()
+            self._show_ai_error(
+                "AI request timed out. Check your API key and network, then try again."
+            )
+
+        thread = threading.Thread(target=_wrapped, daemon=True)
+        QTimer.singleShot(AI_UI_TIMEOUT_MS, _timeout)
+        thread.start()
 
     def run_ai_insights(self):
 
@@ -528,26 +623,16 @@ class FinanceApp(QWidget):
             )
             return
 
-        self.ai_insights_btn.setEnabled(False)
-        thread = threading.Thread(
-            target=self._ai_insights_worker,
-            daemon=True
+        module = ai_features
+        if module is None:
+            self._show_ai_error("AI module not loaded.")
+            return
+
+        self._run_ai_task(
+            self.ai_insights_btn,
+            lambda: module.analyze_spending(self.df),
+            self._show_ai_insights
         )
-        thread.start()
-
-    def _ai_insights_worker(self):
-
-        try:
-            result = ai_features.analyze_spending(self.df)
-            QTimer.singleShot(
-                0,
-                lambda: self._show_ai_insights(result)
-            )
-        except Exception as e:
-            QTimer.singleShot(
-                0,
-                lambda: self._show_ai_error(str(e))
-            )
 
     def _show_ai_insights(self, result):
 
@@ -563,6 +648,120 @@ class FinanceApp(QWidget):
 
         QMessageBox.information(self, "AI Insights", result)
 
+    def run_ai_budget_advisor(self):
+
+        if not self._check_ai_ready():
+            return
+
+        if self.df.empty:
+            QMessageBox.information(
+                self,
+                "No Data",
+                "Add or import transactions before requesting budget advice."
+            )
+            return
+
+        module = ai_features
+        if module is None:
+            self._show_ai_error("AI module not loaded.")
+            return
+
+        self._run_ai_task(
+            self.ai_budget_btn,
+            lambda: module.budget_advice(self.df, self.budgets),
+            self._show_ai_budget
+        )
+
+    def _show_ai_budget(self, result):
+
+        self.ai_budget_btn.setEnabled(True)
+
+        if not result:
+            QMessageBox.information(
+                self,
+                "Budget Advisor",
+                "No budget advice returned."
+            )
+            return
+
+        QMessageBox.information(self, "Budget Advisor", result)
+
+    def run_ai_fraud_check(self):
+
+        if not self._check_ai_ready():
+            return
+
+        if self.df.empty:
+            QMessageBox.information(
+                self,
+                "No Data",
+                "Add or import transactions before running fraud detection."
+            )
+            return
+
+        module = ai_features
+        if module is None:
+            self._show_ai_error("AI module not loaded.")
+            return
+
+        self._run_ai_task(
+            self.ai_fraud_btn,
+            lambda: module.detect_unusual_spending(self.df),
+            self._show_ai_fraud
+        )
+
+    def _show_ai_fraud(self, result):
+
+        self.ai_fraud_btn.setEnabled(True)
+
+        if not result:
+            QMessageBox.information(
+                self,
+                "Fraud Detection",
+                "No fraud detection results returned."
+            )
+            return
+
+        QMessageBox.information(self, "Fraud Detection", result)
+
+    def run_ai_chat(self):
+
+        if not self._check_ai_ready():
+            return
+
+        question, ok = QInputDialog.getMultiLineText(
+            self,
+            "AI Chat",
+            "Ask a question about your finances:"
+        )
+        if not ok or not question.strip():
+            return
+
+        module = ai_features
+        if module is None:
+            self._show_ai_error("AI module not loaded.")
+            return
+
+        self._run_ai_task(
+            self.ai_chat_btn,
+            lambda: module.chat_assistant(self.df, question.strip()),
+            self._show_ai_chat
+        )
+
+    def _show_ai_chat(self, result):
+
+        self.ai_chat_btn.setEnabled(True)
+
+        if not result:
+            QMessageBox.information(
+                self,
+                "AI Chat",
+                "No response returned."
+            )
+            return
+
+        QMessageBox.information(self, "AI Chat", result)
+
     def run_ai_category(self):
 
         if not self._check_ai_ready():
@@ -577,27 +776,18 @@ class FinanceApp(QWidget):
             )
             return
 
-        self.ai_category_btn.setEnabled(False)
-        thread = threading.Thread(
-            target=self._ai_category_worker,
-            args=(description, list(self.categories)),
-            daemon=True
+        module = ai_features
+        if module is None:
+            self._show_ai_error("AI module not loaded.")
+            return
+
+        self._run_ai_task(
+            self.ai_category_btn,
+            lambda: module.suggest_category(
+                description, list(self.categories)
+            ),
+            self._apply_ai_category
         )
-        thread.start()
-
-    def _ai_category_worker(self, description, categories):
-
-        try:
-            category = ai_features.suggest_category(description, categories)
-            QTimer.singleShot(
-                0,
-                lambda: self._apply_ai_category(category)
-            )
-        except Exception as e:
-            QTimer.singleShot(
-                0,
-                lambda: self._show_ai_error(str(e))
-            )
 
     def _apply_ai_category(self, category):
 
@@ -623,8 +813,15 @@ class FinanceApp(QWidget):
 
     def _show_ai_error(self, message):
 
-        self.ai_insights_btn.setEnabled(True)
-        self.ai_category_btn.setEnabled(True)
+        for btn in [
+            getattr(self, "ai_insights_btn", None),
+            getattr(self, "ai_category_btn", None),
+            getattr(self, "ai_budget_btn", None),
+            getattr(self, "ai_fraud_btn", None),
+            getattr(self, "ai_chat_btn", None)
+        ]:
+            if btn:
+                btn.setEnabled(True)
         QMessageBox.warning(self, "AI Error", message)
 
     # ---------------- Category & Account Management ----------------
@@ -736,12 +933,16 @@ class FinanceApp(QWidget):
 
     def autosave(self):
 
+        if not self._dirty:
+            return
+
         try:
             autosave_path = os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
                 AUTOSAVE_FILENAME
             )
             self.df.to_csv(autosave_path, index=False)
+            self._dirty = False
         except Exception:
             # Autosave failure should not interrupt the user flow
             return

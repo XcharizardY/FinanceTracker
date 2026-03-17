@@ -1,40 +1,36 @@
 # Finance Tracker Pro
 
-Finance Tracker Pro is a desktop personal finance management application built with PyQt6, pandas, and matplotlib. It helps users track income, expenses, savings, and financial trends through an interactive dashboard and charts.
+Finance Tracker Pro is a desktop personal finance manager built with PyQt6, pandas, and matplotlib. Track income, expenses, savings, accounts, and categories with a clean dashboard and charts. Optional AI features provide insights, budget advice, fraud checks, chat, and smart category suggestions.
 
 ---
 
 ## Features
 
-- CSV import for transaction data  
-- Manual transaction entry  
-- Financial dashboard with summary cards  
-- Income vs expense trend chart  
-- Expense distribution pie chart  
-- Savings goal progress tracking  
-- Transaction table view  
-- Export charts as image files  
-- Modern dark theme interface  
+- Import one or multiple CSV files at once
+- Manual transaction entry
+- Multi-account support
+- Category management
+- Financial dashboard cards (income, expenses, savings, rate)
+- Income vs expense trend chart
+- Expense distribution pie chart
+- Savings goal progress tracking
+- Transaction table view
+- Export charts as images
+- Autosave to `autosave.csv`
+- Optional AI insights, budget advice, fraud check, chat, and category suggestion
+- Automatic update check (version.json)
 
 ---
 
+## Quick Start
 
-## Installation
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/XcharizardY/finance-tracker-pro.git
-cd finance-tracker-pro
-````
-
-### 2. Install dependencies
+### 1. Install dependencies
 
 ```bash
-pip install PyQt6 pandas matplotlib
+pip install PyQt6 pandas matplotlib openai
 ```
 
-### 3. Run the application
+### 2. Run the app
 
 ```bash
 python main.py
@@ -44,40 +40,77 @@ python main.py
 
 ## CSV Format
 
-Your CSV file must include the following columns:
+The app accepts CSV files with these columns:
 
 ```csv
-Date,Type,Category,Amount,Description
-2025-01-01,Income,Salary,3000,Monthly salary
-2025-01-02,Expense,Food,50,Groceries
-2025-01-03,Expense,Transport,20,Taxi
+Date,Type,Category,Account,Amount,Description
+2025-01-01,Income,Salary,Bank,3000,Monthly salary
+2025-01-02,Expense,Food,Cash,50,Groceries
+2025-01-03,Expense,Transport,Credit Card,20,Taxi
 ```
 
-Fields:
+Required fields:
 
-* Date: YYYY-MM-DD
-* Type: Income or Expense
-* Category: Any category name
-* Amount: Numeric value
-* Description: Optional text
+- `Date` (YYYY-MM-DD)
+- `Type` (`Income` or `Expense`)
+- `Amount` (numeric)
+
+Optional fields:
+
+- `Category` (defaults to `Other`)
+- `Account` (defaults to the first account)
+- `Description` (optional)
+
+---
+
+## AI Setup (Optional)
+
+Create `ai_config.json` next to `main.py`:
+
+```json
+{
+  "api_key": "YOUR_OPENAI_API_KEY",
+  "model": "gpt-4o-mini"
+}
+```
+
+Or set environment variables:
+
+```bash
+setx OPENAI_API_KEY "your-key"
+setx OPENAI_MODEL "gpt-4o-mini"
+```
+
+Optional for custom endpoints:
+
+```bash
+setx OPENAI_BASE_URL "https://your-endpoint"
+```
+
+Notes:
+
+- Keep `ai_config.json` out of source control (already in `.gitignore`).
+- AI calls time out after ~20s and show an error if network or key is invalid.
 
 ---
 
 ## Usage
 
-* Click **Load CSV** to import transactions
-* Use the entry form to manually add transactions
-* View financial summaries in dashboard cards
-* Analyze charts for trends and spending distribution
-* Export charts using the Export button
+- **Load CSV**: Import one or multiple files
+- **Save CSV**: Export all transactions
+- **Add**: Manually add a transaction
+- **Manage Categories / Accounts**: Add or remove list items
+- **AI buttons**: Get insights, budget advice, fraud checks, chat answers, or category suggestions
+- **Export Chart**: Save charts as PNG
 
 ---
 
 ## Requirements
 
-* Python 3.9+
-* PyQt6
-* pandas
-* matplotlib
+- Python 3.9+
+- PyQt6
+- pandas
+- matplotlib
+- openai (optional for AI features)
 
 ---
