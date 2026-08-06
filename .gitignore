@@ -1,3 +1,11 @@
-ai_config.json
+# Local environments & caches
 __pycache__/
 *.pyc
+.env
+venv/
+env/
+
+# App-specific ignores
+ai_config.json
+data/autosave.csv
+data/*.csv

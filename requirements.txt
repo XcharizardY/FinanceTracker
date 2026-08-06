@@ -2,3 +2,4 @@ PyQt6>=6.6
 pandas>=2.0
 matplotlib>=3.8
 openai>=1.30
+qtawesome>=1.3.0
