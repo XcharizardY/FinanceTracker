@@ -6,12 +6,6 @@ Track income, expenses, savings, accounts, and categories with a clean dashboard
 
 ---
 
-## Screenshots
-
-*(Add 2-3 screenshots here — the dashboard, the charts, and the AI insights panel — before sharing this repo with clients.)*
-
----
-
 ## Features
 
 - Import one or multiple CSV files at once
