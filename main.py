@@ -296,17 +296,17 @@ class FinanceApp(QWidget):
         layout.addWidget(QLabel("DATA MANAGEMENT"))
         
         load_btn = QPushButton(" Load CSV")
-        load_btn.setIcon(qta.icon('fa5s.folder-open', color='#aaa'))
+        load_btn.setIcon(qta.icon('fa5s.folder-open', color='#FFCC00'))
         load_btn.clicked.connect(self.load_csv)
         layout.addWidget(load_btn)
 
         save_btn = QPushButton(" Save CSV")
-        save_btn.setIcon(qta.icon('fa5s.save', color='#aaa'))
+        save_btn.setIcon(qta.icon('fa5s.save', color='#FFCC00'))
         save_btn.clicked.connect(self.save_csv)
         layout.addWidget(save_btn)
 
         export_btn = QPushButton(" Export Chart")
-        export_btn.setIcon(qta.icon('fa5s.chart-pie', color='#aaa'))
+        export_btn.setIcon(qta.icon('fa5s.chart-pie', color='#FFCC00'))
         export_btn.clicked.connect(self.export_chart)
         layout.addWidget(export_btn)
 
@@ -314,12 +314,12 @@ class FinanceApp(QWidget):
         layout.addWidget(QLabel("CONFIGURATION"))
         
         manage_cat_btn = QPushButton(" Manage Categories")
-        manage_cat_btn.setIcon(qta.icon('fa5s.tags', color='#aaa'))
+        manage_cat_btn.setIcon(qta.icon('fa5s.tags', color='#FFCC00'))
         manage_cat_btn.clicked.connect(self.manage_categories)
         layout.addWidget(manage_cat_btn)
 
         manage_acc_btn = QPushButton(" Manage Accounts")
-        manage_acc_btn.setIcon(qta.icon('fa5s.wallet', color='#aaa'))
+        manage_acc_btn.setIcon(qta.icon('fa5s.wallet', color='#FFCC00'))
         manage_acc_btn.clicked.connect(self.manage_accounts)
         layout.addWidget(manage_acc_btn)
 
@@ -327,22 +327,22 @@ class FinanceApp(QWidget):
         layout.addWidget(QLabel("AI ASSISTANT HUB"))
         
         self.ai_insights_btn = QPushButton(" Financial Insights")
-        self.ai_insights_btn.setIcon(qta.icon('fa5s.lightbulb', color='#aaa'))
+        self.ai_insights_btn.setIcon(qta.icon('fa5s.lightbulb', color='#FFCC00'))
         self.ai_insights_btn.clicked.connect(self.run_ai_insights)
         layout.addWidget(self.ai_insights_btn)
 
         self.ai_budget_btn = QPushButton(" Budget Advisor")
-        self.ai_budget_btn.setIcon(qta.icon('fa5s.chart-line', color='#aaa'))
+        self.ai_budget_btn.setIcon(qta.icon('fa5s.chart-line', color='#FFCC00'))
         self.ai_budget_btn.clicked.connect(self.run_ai_budget_advisor)
         layout.addWidget(self.ai_budget_btn)
 
         self.ai_fraud_btn = QPushButton(" Fraud Check")
-        self.ai_fraud_btn.setIcon(qta.icon('fa5s.shield-alt', color='#aaa'))
+        self.ai_fraud_btn.setIcon(qta.icon('fa5s.shield-alt', color='#FFCC00'))
         self.ai_fraud_btn.clicked.connect(self.run_ai_fraud_check)
         layout.addWidget(self.ai_fraud_btn)
 
         self.ai_chat_btn = QPushButton(" AI Chat")
-        self.ai_chat_btn.setIcon(qta.icon('fa5s.robot', color='#aaa'))
+        self.ai_chat_btn.setIcon(qta.icon('fa5s.robot', color='#FFCC00'))
         self.ai_chat_btn.clicked.connect(self.run_ai_chat)
         layout.addWidget(self.ai_chat_btn)
 
